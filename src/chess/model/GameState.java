@@ -16,7 +16,9 @@ public class GameState {
     public Color toMove() { return toMove; }
     public List<Move> history() { return history; }
 
-    //TRIES TO MAKE MOVE IF LEGAL
+    /**
+    *TRIES TO MAKE MOVE IF LEGAL
+     * */
     public boolean makeMove(Move m) {
         Piece p = board.get(m.fromRow, m.fromCol);
         if (p == null || p.color() != toMove) return false;

@@ -11,16 +11,6 @@ import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.util.List;
 
-/**
- * Improved Swing GUI for interacting with GameState.
- *
- * - Larger piece rendering using generated icons (unicode glyphs with outline)
- * - Clear contrast between piece colors and board squares
- * - Highlights: selected square (cyan), legal moves (yellow), last move (light green)
- * - Side panel with move history, status label and Restart button
- *
- * Note: Fully-qualify java.awt.Color and chess.model.Color where ambiguous.
- */
 public class ChessGUI {
     private final JFrame frame;
     private final JButton[][] squares = new JButton[8][8];
@@ -34,7 +24,7 @@ public class ChessGUI {
     private final int squareSize = 80; // preferred pixel size of each square
 
     public ChessGUI() {
-        frame = new JFrame("Simple Chess (Improved GUI)");
+        frame = new JFrame("Simple Chess");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         initUI();
         refresh();
@@ -105,13 +95,6 @@ public class ChessGUI {
         selR = selC = -1;
         lastMove = null;
         historyArea.setText("");
-        // recreate game state
-        // since GameState has no reset, create a new instance by reflection-like recreate:
-        // simpler: create a new ChessGUI; but to keep this class, reassign state via replacement
-        // For clarity, we'll create a fresh GameState in place (using field access).
-        // Using direct field assignment here:
-        // (Note: state is final; easier approach is to reset board via new GameState and replace UI by rebuilding)
-        // We'll perform a simple full re-create of the UI to ensure fresh state:
         SwingUtilities.invokeLater(() -> {
             JFrame top = frame;
             top.dispose();
@@ -158,22 +141,31 @@ public class ChessGUI {
                 if (!ok) {
                     JOptionPane.showMessageDialog(frame, "Illegal move.");
                 } else {
+                    // move applied to model; update lastMove and history
                     lastMove = chosen;
                     appendHistory(chosen);
-                    // show status and check conditions
-                    chess.model.Color next = state.toMove();
-                    updateStatus();
-                    if (state.isCheckmate(next)) {
-                        JOptionPane.showMessageDialog(frame, "Checkmate! " + next.opposite() + " wins.");
-                    } else if (state.isStalemate(next)) {
-                        JOptionPane.showMessageDialog(frame, "Stalemate!");
-                    } else if (state.isInCheck(next)) {
-                        // subtle UI hint: updateStatus will show "(in check)"
-                    }
+
+                    // Refresh the UI immediately so the moved piece is visible.
+                    // Then show any blocking dialogs (checkmate/stalemate) after repaint completes.
+                    refresh();
+
+                    final chess.model.Color next = state.toMove();
+                    SwingUtilities.invokeLater(() -> {
+                        if (state.isCheckmate(next)) {
+                            JOptionPane.showMessageDialog(frame, "Checkmate! " + next.opposite() + " wins.");
+                        } else if (state.isStalemate(next)) {
+                            JOptionPane.showMessageDialog(frame, "Stalemate!");
+                        } else if (state.isInCheck(next)) {
+                            // Non-blocking status update already shown via updateStatus/refresh;
+                            // optional: show a small info dialog or flash status
+                            // JOptionPane.showMessageDialog(frame, next + " is in check.");
+                        }
+                    });
                 }
             }
             selR = -1;
             selC = -1;
+            // Ensure UI reflect selection cleared in any case
             refresh();
         }
     }
@@ -238,11 +230,7 @@ public class ChessGUI {
         updateStatus();
         frame.repaint();
     }
-
-    /**
-     * Create an ImageIcon rendering the unicode glyph for a piece with an outline so it's
-     * visible on both light and dark squares.
-     */
+    
     private ImageIcon createPieceIcon(Piece p, int size) {
         String glyph = unicodeFor(p);
         int w = size, h = size;
