@@ -230,7 +230,7 @@ public class ChessGUI {
         updateStatus();
         frame.repaint();
     }
-    
+
     private ImageIcon createPieceIcon(Piece p, int size) {
         String glyph = unicodeFor(p);
         int w = size, h = size;
